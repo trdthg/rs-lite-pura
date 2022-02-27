@@ -1,6 +1,6 @@
-# 一个精简的容器运行时
+# 一个精简的容器运行时 😍
 
-## 基本原理
+## 理论部分
 
 ### 容器是一个进程
 >  it’s a forked or cloned process
@@ -108,8 +108,63 @@ lrwxrwxrwx 1 trdthg trdthg 0 Feb 27 17:37 uts -> 'uts:[4026531838]'
 之后然后是一个`fork/vfork`调用来创建实际的容器进程。
 
 #### CLONE
+clone主要用来创建新的命名空间：该系统调用和`UNSHARE`一样能够指定命名空间，然后派生出子进程并为子进程创建堆栈
 
-### OCI规范定义的API
+#### SETNS(对应nsetns命令)
+让当前线程加入一个命名空间：通过文件描述符将其命名空间修改为一个已经存在的命名空间，例如
+
+nsetns是对setns做的封装，不需要fd，指定pid即可
+```
+// fock一个shell，并写这个shell关联的是PID 15对应的命名空间
+// 说人话就是: 在/proc/15/ns/mnt的命名空间内执行/bin/bash
+nsetns --mount=/proc/15/ns/mnt /bin/bash
+```
+
+### 使用nsetns访问docker容器
+1. 使用docker创建一个alpine容器，找到pid，并查看它的命名空间，可以看到有一些命名空间是相同的(虽然大部分都不同)
+```shell
+»»»» sudo docker run -d --rm alpine sleep 1000;
+bf68ba8e9d7b0d83e10c960c2b273b57444f354a9fbf1589f121cf0e3d246d9d
+»»»» ps -aux | grep sleep
+root      345747  0.2  0.0   1584     4 ?        Ss   18:28   0:00 sleep 1000
+trdthg    345850  0.0  0.0  10076  2532 pts/7    S+   18:28   0:00 grep --color=auto sleep
+»»»» sudo ls -la /proc/345747/ns
+total 0
+dr-x--x--x 2 root root 0 Feb 27 18:28 .
+dr-xr-xr-x 9 root root 0 Feb 27 18:28 ..
+lrwxrwxrwx 1 root root 0 Feb 27 18:29 cgroup -> 'cgroup:[4026533097]'
+lrwxrwxrwx 1 root root 0 Feb 27 18:29 ipc -> 'ipc:[4026533037]'
+lrwxrwxrwx 1 root root 0 Feb 27 18:29 mnt -> 'mnt:[4026533035]'
+lrwxrwxrwx 1 root root 0 Feb 27 18:28 net -> 'net:[4026533040]'
+lrwxrwxrwx 1 root root 0 Feb 27 18:29 pid -> 'pid:[4026533038]'
+lrwxrwxrwx 1 root root 0 Feb 27 18:29 pid_for_children -> 'pid:[4026533038]'
+lrwxrwxrwx 1 root root 0 Feb 27 18:29 time -> 'time:[4026531834]'
+lrwxrwxrwx 1 root root 0 Feb 27 18:29 time_for_children -> 'time:[4026531834]'
+lrwxrwxrwx 1 root root 0 Feb 27 18:29 user -> 'user:[4026531837]'
+lrwxrwxrwx 1 root root 0 Feb 27 18:29 uts -> 'uts:[4026533036]'
+```
+2. 利用nsetns访问
+只需要利用PID即可
+```
+»»»» sudo nsenter --mount=/proc/345747/ns/mnt /bin/ash
+/ # ls
+```
+
+我们在容器的命名空间内运行了一个shell进程，容器的根命名空间和主机的不同，所以
+```
+docker exec -it <CONTAINER_ID> <CMD>
+```
+等于
+```
+nsenter -a -t <CONTAINER_PID> <CMD>
+```
+
+### docker做了什么
+经过上面的讨论，`docker run`命令会为容器fock一个进程，更具体一点就是docker(其实是containerd(守护进程))会调用底层的容器运行时(runc)创建一个指定的命名空间，准备容器环境，并在用户定义的命令发生前执行一些特殊命令
+
+docker本身只是做了大量配置工作(管理config.json, 容器根目录等)，拉取镜像，管理网络等工作
+
+### OCI规范
 > An OCI-compliant container runtime is a CLI binary that implements the following commands:
 符合OCI规范的容器运行时是一个实现了以下cli命令的二进制文件
 ``` rs
@@ -119,3 +174,30 @@ state <id>
 kill <id> <signal>
 delete <id>
 ```
+
+## rust实现部分 todo
+
+## 附录
+
+### nsetns命令
+```
+nsenter [options] [program [arguments]]
+
+options:
+-t, --target pid：指定被进入命名空间的目标进程的pid
+-m, --mount[=file]：进入mount命令空间。如果指定了file，则进入file的命令空间
+-u, --uts[=file]：进入uts命令空间。如果指定了file，则进入file的命令空间
+-i, --ipc[=file]：进入ipc命令空间。如果指定了file，则进入file的命令空间
+-n, --net[=file]：进入net命令空间。如果指定了file，则进入file的命令空间
+-p, --pid[=file]：进入pid命令空间。如果指定了file，则进入file的命令空间
+-U, --user[=file]：进入user命令空间。如果指定了file，则进入file的命令空间
+-G, --setgid gid：设置运行程序的gid
+-S, --setuid uid：设置运行程序的uid
+-r, --root[=directory]：设置根目录
+-w, --wd[=directory]：设置工作目录
+```
+
+### 参考
+- [Container Runtime in Rust — Part 0](https://itnext.io/container-runtime-in-rust-part-0-7af709415cda)
+- [云原生CTO公众号中文翻译]()
+- [nsenter命令简介](https://staight.github.io/2019/09/23/nsenter%E5%91%BD%E4%BB%A4%E7%AE%80%E4%BB%8B/)
