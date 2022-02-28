@@ -1,3 +1,7 @@
+mod core;
+mod error;
+mod oci;
+
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
