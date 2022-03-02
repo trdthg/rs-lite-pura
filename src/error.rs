@@ -9,14 +9,20 @@ pub enum Error {
         source: io::Error,
     },
 
+    #[error("convert error: {}", source)]
+    Convert {
+        #[from]
+        source: std::convert::Infallible,
+    },
+
     #[error("nix error: {}", source)]
     Nix {
         #[from]
         source: nix::Error,
     },
 
-    #[error("the data for key `{0}` is not available")]
-    Redaction(String),
+    #[error("error msg: `{0}`")]
+    StringError(String),
 
     #[error("invalid header (expected {expected:?}, found {found:?})")]
     InvalidHeader { expected: String, found: String },

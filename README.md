@@ -243,6 +243,8 @@ options:
 ```
 
 ### 参考
+- [Open Container Initiative Runtime Specification](https://github.com/opencontainers/runtime-spec)
+- [我的个人翻译](https://trdthg.github.io/other/oci.html)
 - [Container Runtime in Rust — Part 0](https://itnext.io/container-runtime-in-rust-part-0-7af709415cda)
 - [云原生CTO公众号中文翻译](https://mp.weixin.qq.com/s?__biz=Mzg5NDUxODg5Nw==&mid=2247487551&idx=1&sn=de5edc82c8b2a815d4bbb53b1c0ef6e1&chksm=c01f0321f7688a37e495c76e2f1c8c9dfdca37a48c076983b82d1a6a787525d3d3b1eae4771e&scene=178&cur_album_id=2058461413878169601#rd)
 - [真正运行容器的工具：深入了解 runc 和 OCI 规范](https://www.modb.pro/db/145438)
