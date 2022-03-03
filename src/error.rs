@@ -15,13 +15,22 @@ pub enum Error {
         source: std::convert::Infallible,
     },
 
+    #[error("serde_json error: {}", source)]
+    SerdeJson {
+        #[from]
+        source: serde_json::Error,
+    },
+
     #[error("nix error: {}", source)]
     Nix {
         #[from]
         source: nix::Error,
     },
 
-    #[error("error msg: `{0}`")]
+    #[error("log error: `{0}`")]
+    LogError(String),
+
+    #[error("string error: `{0}`")]
     StringError(String),
 
     #[error("invalid header (expected {expected:?}, found {found:?})")]

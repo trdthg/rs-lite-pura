@@ -22,6 +22,6 @@ pub struct Mount {
     #[serde(rename = "type")]
     pub mount_type: Option<String>,
     pub source: Option<String>,
+    #[serde(default)]
     pub options: Option<Vec<String>>,
 }
-

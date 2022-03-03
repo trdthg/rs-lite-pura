@@ -1,10 +1,12 @@
 use std::{
+    fs,
     os::unix::fs::symlink,
     path::{Path, PathBuf},
-    str::FromStr, fs,
+    str::FromStr,
 };
 
 use nix::{
+    errno::Errno,
     mount::{mount, umount, MsFlags},
     sys::stat::{makedev, mknod, Mode, SFlag},
     unistd::{chdir, chown, pivot_root, Gid, Uid},
@@ -205,11 +207,30 @@ pub fn mount_devices(mounts: &Vec<Mount>, rootfs: &Path) -> Result<()> {
 
         let dest = rootfs.join(m.destination.trim_start_matches("/"));
         if !Path::new(&dest).exists() {
-            fs::create_dir_all(dest)?;
+            fs::create_dir_all(&dest)?;
         }
 
-        if m.mount_type.as_ref().ok_or(Error::StringError("")) == "bind" {
+        if m.mount_type
+            .as_ref()
+            .ok_or(Error::StringError("没有设置 mount_type".to_string()))?
+            == "bind"
+        {
+            flags = flags | MsFlags::MS_BIND;
+        }
 
+        match mount::<str, PathBuf, str, str>(
+            Some(m.source.as_ref().unwrap().as_str()),
+            &dest,
+            Some(m.mount_type.as_ref().unwrap().as_str()),
+            flags,
+            None,
+        ) {
+            Ok(_) => (),
+            Err(e) => {
+                if e != Errno::EBUSY {
+                    return Err(Error::Nix { source: e });
+                }
+            }
         }
     }
     Ok(())
