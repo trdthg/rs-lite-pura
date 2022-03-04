@@ -3,10 +3,11 @@ mod error;
 mod logger;
 mod oci;
 
+use error::{Error, Result};
 use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
-use oci::Create;
+use oci::{ContainerState, Create, Spec};
 
 use crate::logger::ContainerLogger;
 
@@ -93,7 +94,7 @@ fn main() -> crate::error::Result<()> {
             console_socket: console_socket.to_owned(),
             pid_file: pid_file.to_owned(),
             root,
-        }),
+        })?,
         Commands::Start { id } => todo!(),
         Commands::Kill { id, signal } => todo!(),
         Commands::Delete { id } => todo!(),
@@ -102,8 +103,21 @@ fn main() -> crate::error::Result<()> {
     Ok(())
 }
 
-pub fn create(create: Create) {
-    todo!()
+pub fn create(create: Create) -> Result<()> {
+    let container_id = create.id;
+    let root = create.root;
+    let bundle = create.bundle;
+    let console_socket = create.console_socket;
+    let spec = Spec::try_from(Path::new(&bundle).join("config.json").as_path())?;
+
+    let has_terminal = spec
+        .process
+        .and_then(|process| process.terminal)
+        .unwrap_or(false);
+
+    let state = ContainerState::new(&container_id, 0, &bundle);
+    // let init_lock_path = format!("{container_path_str}/init/sock");
+    Ok((()))
 }
 
 // #[clap(
