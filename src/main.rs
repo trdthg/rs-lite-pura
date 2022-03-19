@@ -108,14 +108,23 @@ pub fn create(create: Create) -> Result<()> {
     let root = create.root;
     let bundle = create.bundle;
     let console_socket = create.console_socket;
+
+    // 加载config.json
     let spec = Spec::try_from(Path::new(&bundle).join("config.json").as_path())?;
 
+    // 判断是否有终端
     let has_terminal = spec
         .process
         .and_then(|process| process.terminal)
         .unwrap_or(false);
 
+    // 保存容器状态
     let state = ContainerState::new(&container_id, 0, &bundle);
+    let container_path = format!("{root}/{container_id}");
+    state.save(Path::new(&container_path))?;
+
+    let pty_socket: Option<PtySocket> = if has_terminal { None } else { None };
+
     // let init_lock_path = format!("{container_path_str}/init/sock");
     Ok((()))
 }
